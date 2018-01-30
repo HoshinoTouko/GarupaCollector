@@ -36,3 +36,5 @@ class Core(object):
     def run(self):
         for task in self.tasks:
             task()
+
+

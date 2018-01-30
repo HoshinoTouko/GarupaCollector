@@ -12,6 +12,7 @@ import urllib.parse as parse
 
 from bs4 import BeautifulSoup
 from src.Collector.Model import Common
+from src.Collector.Model.DataBuffer import DataBuffer
 from src.Collector.Model.Core import Core
 
 
@@ -34,32 +35,40 @@ class BandoriOfficialSite(Core):
         for article in articles:
             i+=1
             if i > 4: break
-            tmpData = {}
-            # Get simple data
-            tmpData['title'] = article('h3')[0].get_text()
-            tmpData['url'] = article('a')[0].attrs['href']
-            tmpData['desc'] = article('p')[0].get_text()
-            tmpData['titleImg'] = article('img')[0].attrs['src']
-            tmpData['date'] = article.select('div span')[0].get_text()
 
-            tmpData['content'] = ''
-            tmpData['imgs'] = []
+            tmpData = DataBuffer()
+            # Get simple data
+            tmpData.set('title', article('h3')[0].get_text())
+            tmpData.set('url', article('a')[0].attrs['href'])
+            tmpData.set('desc', article('p')[0].get_text())
+            tmpData.set('titleImg', article('img')[0].attrs['src'])
+            tmpData.set('date', article.select('div span')[0].get_text())
+
+            tmpData.set('content', '')
+            tmpData.set('imgs', [])
             if True:
                 # Get details
                 try:
                     articleDetail = self.get_html(tmpData['url'])
                     detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
 
-                    tmpData['content'] = detailSoup('div', class_='in_post')[0].get_text()
-                    tmpData['content'] = Common.resolve_multi_line(tmpData['content'], '\n')
+                    tmpData.set(
+                        'content',
+                        Common.resolve_multi_line(
+                            detailSoup('div', class_='in_post')[0].get_text(),
+                            '\n'
+                        )
+                    )
                     imgs = detailSoup('div', class_='in_post')[0]('img')
-                    for img in imgs:
-                        tmpData['imgs'].append(img.attrs['src'])
+                    tmpData.set(
+                        'imgs',
+                        list(map(lambda img: img.attrs['src'], imgs))
+                    )
                 except Exception as e:
-                    tmpData['msg'] = 'Error: ' + str(e)
+                    tmpData.set('msg', 'Error: ' + str(e))
                 else:
-                    tmpData['msg'] = 'Success'
-            result.append(tmpData)
+                    tmpData.set('msg', 'Success')
+            result.append(tmpData.get_data())
         print(result)
 
 if __name__ == '__main__':
