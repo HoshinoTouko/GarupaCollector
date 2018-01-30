@@ -8,69 +8,131 @@
 @Desc: 
 '''
 
-import urllib.parse as parse
-
 from bs4 import BeautifulSoup
-from src.Collector.Model import Common
-from src.Collector.Model.DataBuffer import DataBuffer
-from src.Collector.Model.Core import Core
+from Collector.Common import Web, Text
+from Collector.DataBuffer import DataBuffer
+from Collector.Core import Core
+
+from multiprocessing import Pool
+
+BandoriOfficialSite = Core(name='Bandori Official Site', index='http://bang-dream.com/')
 
 
-class BandoriOfficialSite(Core):
-    def __init__(self):
-        super(BandoriOfficialSite, self).__init__()
-        self.name = 'Bandori Official Site'
-        self.index = 'https://bang-dream.com/'
-
-        self.add_task(self.check_update)
-
-    def check_update(self):
-        response = self.get_html('https://bang-dream.com/update/')
-        soup = BeautifulSoup(response, 'html.parser', from_encoding='utf-8')
-        # Get articles
-        articles = soup('article')
-        # Foreach articles
-        result = []
-        i = 0
-        for article in articles:
-            i+=1
-            if i > 4: break
-
-            tmpData = DataBuffer()
-            # Get simple data
+@BandoriOfficialSite.task
+def check_update():
+    response = Web.get_html('https://bang-dream.com/update/')
+    soup = BeautifulSoup(response, 'html.parser', from_encoding='utf-8')
+    # Get articles
+    articles = soup('article')
+    # Foreach articles
+    tmpResult = []
+    result = []
+    i = 0
+    for article in articles:
+        tmpData = DataBuffer()
+        # Get simple data
+        try:
             tmpData.set('title', article('h3')[0].get_text())
-            tmpData.set('url', article('a')[0].attrs['href'])
-            tmpData.set('desc', article('p')[0].get_text())
+        except Exception as e:
+            print(str(e))
+
+        url = article('a')[0].attrs['href']
+        tmpData.set('url', url)
+
+        tmpData.set('desc', article('p')[0].get_text())
+        try:
             tmpData.set('titleImg', article('img')[0].attrs['src'])
-            tmpData.set('date', article.select('div span')[0].get_text())
+        except Exception as e:
+            print(str(e))
+        tmpData.set('date', article.select('div span')[0].get_text())
 
-            tmpData.set('content', '')
-            tmpData.set('imgs', [])
-            if True:
-                # Get details
-                try:
-                    articleDetail = self.get_html(tmpData['url'])
-                    detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
+        tmpData.set('content', '')
+        tmpData.set('imgs', [])
 
-                    tmpData.set(
-                        'content',
-                        Common.resolve_multi_line(
-                            detailSoup('div', class_='in_post')[0].get_text(),
-                            '\n'
-                        )
-                    )
-                    imgs = detailSoup('div', class_='in_post')[0]('img')
-                    tmpData.set(
-                        'imgs',
-                        list(map(lambda img: img.attrs['src'], imgs))
-                    )
-                except Exception as e:
-                    tmpData.set('msg', 'Error: ' + str(e))
-                else:
-                    tmpData.set('msg', 'Success')
-            result.append(tmpData.get_data())
-        print(result)
+        # Add to result
+        tmpResult.append(tmpData)
+
+    print(tmpResult)
+    # Get details
+    pool = Pool(8)
+    result = pool.map(
+        get_details,
+        tmpResult
+    )
+    print(result)
+
+
+def get_details(item):
+    return BandoriOfficialSite.parse(item['url'], item).get_data()
+
+@BandoriOfficialSite.parser([
+    '^https://bang-dream.com/news/',
+    '^https://bang-dream.com/cd/'
+])
+def common_parser(url, buffer):
+    try:
+        articleDetail = Web.get_html(url)
+        detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
+
+        buffer.set('content', Text.resolve_multi_line(
+            detailSoup('div', class_='in_post')[0].get_text(),
+            '\n'
+        ))
+
+        imgs = detailSoup('div', class_='in_post')[0]('img')
+        if len(imgs) != 0:
+            buffer.set('imgs', list(map(lambda img: img.attrs['src'], imgs)))
+    except Exception as e:
+        buffer.set('msg', 'Error: ' + str(e))
+    else:
+        buffer.set('msg', 'Success')
+    return buffer
+
+
+@BandoriOfficialSite.parser([
+    '^https://www.youtube.com/',
+    'https://youtu.be/'
+])
+def common_parser(url, buffer):
+    try:
+        articleDetail = Web.get_html(url)
+        detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
+
+        buffer.set('content', Text.resolve_multi_line(
+            detailSoup('div', id='meta')[0].get_text(),
+            '\n'
+        ))
+
+        imgs = detailSoup('body')[0]('img')
+        if len(imgs) != 0:
+            buffer.set('imgs', list(map(lambda img: img.attrs['src'], imgs)))
+    except Exception as e:
+        buffer.set('msg', 'Error: ' + str(e))
+    else:
+        buffer.set('msg', 'Success')
+    return buffer
+
+
+@BandoriOfficialSite.parser('default')
+def common_parser(url, buffer):
+    try:
+        articleDetail = Web.get_html(url)
+        detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
+
+        buffer.set('content', Text.resolve_multi_line(
+            detailSoup('body')[0].get_text(),
+            '\n'
+        ))
+
+        imgs = detailSoup('body')[0]('img')
+        if len(imgs) != 0:
+            buffer.set('imgs', list(map(lambda img: img.attrs['src'], imgs)))
+    except Exception as e:
+        buffer.set('msg', 'Error: ' + str(e))
+    else:
+        buffer.set('msg', 'Success')
+    return buffer
+
 
 if __name__ == '__main__':
-    testPlugin = BandoriOfficialSite()
-    testPlugin.run()
+    BandoriOfficialSite.run()
