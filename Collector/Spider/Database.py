@@ -7,6 +7,7 @@
 @Create at: 2018/1/18 2:09
 @Desc:
 '''
+import json
 import os
 import sqlite3
 
@@ -88,6 +89,8 @@ class Database(object):
             temp = key + '='
             if isinstance(value, int) or isinstance(value, float):
                 temp += '%s' % str(value)
+            elif isinstance(value, dict) or isinstance(value, list):
+                temp += '"%s"' % json.dumps(value, ensure_ascii=False).replace("'", "''")
             else:
                 temp += '"%s"' % str(value)
             target_list.append(temp)
@@ -116,12 +119,14 @@ class Database(object):
                     value = ""
                 if isinstance(value, int) or isinstance(value, float):
                     new_str = '%s' % str(value)
+                elif isinstance(value, dict) or isinstance(value, list):
+                    new_str = "'%s'" % json.dumps(value, ensure_ascii=False).replace("'", "''")
                 else:
                     new_str = "'%s'" % str(value).replace("'", "''")
 
                 values_list.append(new_str)
             sql += '(' + ', '.join(values_list) + ');'
-            # print(sql)
+            print(sql)
             self.run_sql(sql)
 
     def select(self, table):
