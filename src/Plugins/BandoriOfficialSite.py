@@ -20,6 +20,7 @@ from multiprocessing import Pool
 BandoriOfficialSite = Core(
     name='Bandori Official Site',
     index='http://bang-dream.com/',
+    tag='bos',
     tableName='BandoriOfficialSite'
 )
 

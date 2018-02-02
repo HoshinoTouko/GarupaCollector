@@ -8,5 +8,11 @@
 @Desc: 
 '''
 from flask import Flask
+from Collector.Server.Public.Public import Public
 
 APP = Flask(__name__)
+
+APP.register_blueprint(Public, url_prefix='/public')
+
+if __name__ == '__main__':
+    APP.run()
