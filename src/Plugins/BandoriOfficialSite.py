@@ -7,27 +7,42 @@
 @Create at: 2018/1/29 16:41
 @Desc: 
 '''
+import time
 
 from bs4 import BeautifulSoup
-from Collector.Common import Web, Text
-from Collector.DataBuffer import DataBuffer
-from Collector.Core import Core
+from Collector.Spider.Common import Web, Text
+from Collector.Spider.DataBuffer import DataBuffer
+from Collector.Spider.Core import Core
+from Collector.Spider.Database import Database
 
 from multiprocessing import Pool
 
-BandoriOfficialSite = Core(name='Bandori Official Site', index='http://bang-dream.com/')
+BandoriOfficialSite = Core(
+    name='Bandori Official Site',
+    index='http://bang-dream.com/',
+    tableName='BandoriOfficialSite'
+)
 
 
 @BandoriOfficialSite.task
 def check_update():
-    response = Web.get_html('https://bang-dream.com/update/')
-    soup = BeautifulSoup(response, 'html.parser', from_encoding='utf-8')
+    # Old url list
+    oldUrlList = list(map(lambda item: item['url'], BandoriOfficialSite.load_data()))
     # Get articles
-    articles = soup('article')
+    maxPage = 1
+    articles = []
+    for currentPage in range(maxPage):
+        url = 'https://bang-dream.com/update/page/%s' % (currentPage+1)
+        print('Visiting...: %s' % url)
+        response = Web.get_html(url)
+        soup = BeautifulSoup(response, 'html.parser', from_encoding='utf-8')
+        articles += soup('article')
     # Foreach articles
     tmpResult = []
-    result = []
-    i = 0
+    # Reverse articles
+    articles.reverse()
+    # Iter articles
+    maxId = Database.get_db().find_max(BandoriOfficialSite.tableName, 'id') + 1
     for article in articles:
         tmpData = DataBuffer()
         # Get simple data
@@ -44,22 +59,35 @@ def check_update():
             tmpData.set('titleImg', article('img')[0].attrs['src'])
         except Exception as e:
             print(str(e))
-        tmpData.set('date', article.select('div span')[0].get_text())
+
+        try:
+            unixTime = time.strptime(
+                article.select('div span')[0].get_text().strip() + ' 12:00',
+                '%Y/%m/%d %H:%M'
+            )
+            tmpData.set('time', time.mktime(unixTime))
+        except Exception as e:
+            print(e)
 
         tmpData.set('content', '')
         tmpData.set('imgs', [])
 
         # Add to result
-        tmpResult.append(tmpData)
+        if url not in oldUrlList:
+            tmpData.set('id', maxId)
+            maxId += 1
+            tmpResult.append(tmpData)
 
     print(tmpResult)
+
     # Get details
-    pool = Pool(8)
+    pool = Pool(10)
     result = pool.map(
         get_details,
         tmpResult
     )
     print(result)
+    BandoriOfficialSite.save_data(result)
 
 
 def get_details(item):
@@ -67,7 +95,11 @@ def get_details(item):
 
 @BandoriOfficialSite.parser([
     '^https://bang-dream.com/news/',
-    '^https://bang-dream.com/cd/'
+    '^https://bang-dream.com/cd/',
+    '^https://bang-dream.com/interview/',
+    '^https://bang-dream.com/event/',
+    '^https://bang-dream.com/goods/'
+    '^https://bang-dream.com/'
 ])
 def common_parser(url, buffer):
     try:
@@ -90,12 +122,36 @@ def common_parser(url, buffer):
 
 
 @BandoriOfficialSite.parser([
-    '^https://www.youtube.com/',
-    'https://youtu.be/'
+    '^https://bang-dream.com/character/'
 ])
-def common_parser(url, buffer):
+def character_parser(url, buffer):
     try:
         articleDetail = Web.get_html(url)
+        detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
+
+        buffer.set('content', Text.resolve_multi_line(
+            detailSoup('div', id='contents')[0].get_text(),
+            '\n'
+        ))
+
+        imgs = detailSoup('div', id='contents')[0]('img')
+        if len(imgs) != 0:
+            buffer.set('imgs', list(map(lambda img: img.attrs['src'], imgs)))
+    except Exception as e:
+        buffer.set('msg', 'Error: ' + str(e))
+    else:
+        buffer.set('msg', 'Success')
+    return buffer
+
+
+@BandoriOfficialSite.parser([
+    '^https://www.youtube.com/',
+    '^goo.gl',
+    '^https://youtu.be/'
+])
+def proxy_parser(url, buffer):
+    try:
+        articleDetail = Web.get_html_by_proxy(url)
         detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')
 
         buffer.set('content', Text.resolve_multi_line(
@@ -114,7 +170,7 @@ def common_parser(url, buffer):
 
 
 @BandoriOfficialSite.parser('default')
-def common_parser(url, buffer):
+def default_parser(url, buffer):
     try:
         articleDetail = Web.get_html(url)
         detailSoup = BeautifulSoup(articleDetail, 'html.parser', from_encoding='utf-8')

@@ -14,8 +14,7 @@ class DataBuffer(object):
             'url': '',
             'desc': '',
             'titleImg': '',
-            'date': '',
-            'time': '00:00',
+            'time': 0,
             'content': '',
             'imgs': [],
             'msg': 'Null'

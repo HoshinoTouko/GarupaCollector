@@ -27,16 +27,32 @@ class Web:
                 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
                 Chrome/55.0.2883.103 Safari/537.36'
         }
-        proxies = {
-            "http": "http://127.0.0.1:1080",
-            "https": "http://127.0.0.1:1080",
-        }
         try:
             response = requests.get(url, headers=headers).content
         except Exception as e:
             print(str(e))
             print('Direct connection failed, use proxy instead.')
+            response = Web.get_html_by_proxy(url)
+        return response
+
+    @staticmethod
+    def get_html_by_proxy(url):
+        headers = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
+                Chrome/55.0.2883.103 Safari/537.36'
+        }
+        proxies = {
+            "http": "http://127.0.0.1:1080",
+            "https": "http://127.0.0.1:1080",
+        }
+        try:
+            print('Get html by proxy.')
             response = requests.get(url, headers=headers, proxies=proxies).content
+        except Exception as e:
+            print(str(e))
+            print('Proxy connection failed.')
+            response = ''
         return response
 
 

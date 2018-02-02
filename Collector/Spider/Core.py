@@ -9,12 +9,18 @@
 '''
 import re
 
-from Collector.DataBuffer import DataBuffer
+from Collector.Spider.Database import Database
+from Collector.Spider.DataBuffer import DataBuffer
 
 
 class Core(object):
 
-    def __init__(self, name='Default', index='example.com', tableName='Default'):
+    def __init__(
+            self,
+            name='Default',
+            index='example.com',
+            tableName='Default'
+    ):
         self.name = name
         self.index = index
         self.tableName = tableName
@@ -24,6 +30,16 @@ class Core(object):
     def task(self, f):
         self.task_map.append(f)
         return f
+
+    # Read and write
+    def save_data(self, data):
+        # print(data)
+        Database.get_db().insert(self.tableName, data)
+
+    def load_data(self):
+        data = Database.get_db().select(self.tableName)
+        # print(data)
+        return data
 
     # Parser
     def parse(self, url, buffer=DataBuffer()):
@@ -47,9 +63,7 @@ class Core(object):
     def get_parser(self):
         return self.parser_map
 
-    def save_data(self, data):
-        print(data)
-
+    # Tasks
     def add_task(self, task):
         self.task_map.append(task)
 
