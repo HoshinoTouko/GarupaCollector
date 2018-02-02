@@ -8,8 +8,9 @@
 @Desc: 
 '''
 import json
-from flask import Blueprint
+from flask import Blueprint, request, jsonify
 from src import Config
+from Collector.Common import Data
 
 Public = Blueprint('public', __name__)
 
@@ -22,19 +23,45 @@ def get_plugin_name():
         'code': 200,
         'result': pluginNameList
     }
-    return json.dumps(result, ensure_ascii=False)
+    return Data.jsonify(result)
 
 
-@Public.route('/data/<pluginName>')
+@Public.route('/data/<pluginName>', methods=['GET'])
 def get_data_by_plugin_name(pluginName):
+    # Get page and num
+    if not request.args.get('page'):
+        page = 1
+    else:
+        page = int(request.args.get('page'))
+    if not request.args.get('num'):
+        num = 10
+    else:
+        num = int(request.args.get('num'))
+    # Get active plugins
     plugins = Config.activePlugins
     pluginMap = dict(zip(
         map(lambda plugin: plugin.tag, plugins),
         plugins
     ))
-    data = pluginMap[pluginName].load_data()
+    try:
+        data, page, total, totalPage = Data.data_filter(
+            pluginMap[pluginName].load_data(),
+            page = page,
+            num = num
+        )
+        code = 1
+        msg = 'Success'
+    except Exception as e:
+        data = []
+        code = -1
+        msg = str(e)
+        page, total, totalPage = 0, 0, 0
     result = {
-        'code': 200,
-        'result': data
+        'code': code,
+        'result': data,
+        'msg': msg,
+        'page' : page,
+        'total': total,
+        'totalPage': totalPage
     }
-    return json.dumps(result, ensure_ascii=False)
+    return Data.jsonify(result)

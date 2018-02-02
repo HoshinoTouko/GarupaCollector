@@ -10,7 +10,7 @@
 import time
 
 from bs4 import BeautifulSoup
-from Collector.Spider.Common import Web, Text
+from Collector.Common import Web, Text
 from Collector.Spider.DataBuffer import DataBuffer
 from Collector.Spider.Core import Core
 from Collector.Spider.Database import Database
@@ -30,7 +30,7 @@ def check_update():
     # Old url list
     oldUrlList = list(map(lambda item: item['url'], BandoriOfficialSite.load_data()))
     # Get articles
-    maxPage = 1
+    maxPage = 32
     articles = []
     for currentPage in range(maxPage):
         url = 'https://bang-dream.com/update/page/%s' % (currentPage+1)
