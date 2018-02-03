@@ -8,17 +8,22 @@
 @Desc: 
 '''
 import json
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, render_template
 from src import Config
 from Collector.Common import Data
 
 Public = Blueprint('public', __name__)
 
-
 @Public.route('/get_plugin_name')
 def get_plugin_name():
     plugins = Config.activePlugins
-    pluginNameList = list(map(lambda plugin: plugin.tag, plugins))
+    pluginNameList = list(map(lambda plugin: {
+        'name': plugin.name,
+        'index': plugin.index,
+        'desc': plugin.desc,
+        'tag': plugin.tag
+    }, plugins))
     result = {
         'code': 200,
         'result': pluginNameList
@@ -44,8 +49,14 @@ def get_data_by_plugin_name(pluginName):
         plugins
     ))
     try:
+        data = []
+        if pluginName == 'all':
+            for plugin in pluginMap.values():
+                data += plugin.load_data()
+        else:
+            data = pluginMap[pluginName].load_data()
         data, page, total, totalPage = Data.data_filter(
-            pluginMap[pluginName].load_data(),
+            data,
             page = page,
             num = num
         )

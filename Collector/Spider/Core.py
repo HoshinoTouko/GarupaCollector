@@ -20,11 +20,13 @@ class Core(object):
             name='Default',
             index='example.com',
             tag='Default',
+            desc='Default desc',
             tableName='Default'
     ):
         self.name = name
         self.index = index
         self.tag = tag
+        self.desc = desc
         self.tableName = tableName
         self.task_map = []
         self.parser_map = {}

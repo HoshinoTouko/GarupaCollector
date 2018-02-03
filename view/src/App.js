@@ -1,20 +1,21 @@
-import React, { Component } from 'react';
+import React from 'react';
 import './App.css';
+import AppLayout from "./Pages/Layout/Layout";
 
-class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
-      </div>
-    );
-  }
+import zhCN from 'antd/lib/locale-provider/zh_CN';
+import moment from 'moment';
+import 'moment/locale/zh-cn';
+
+moment.locale('zh-cn');
+
+class App extends React.Component {
+    render() {
+        return (
+            <div className="App">
+                <AppLayout/>
+            </div>
+        );
+    }
 }
 
 export default App;

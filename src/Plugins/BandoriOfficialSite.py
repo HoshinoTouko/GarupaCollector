@@ -21,6 +21,7 @@ BandoriOfficialSite = Core(
     name='Bandori Official Site',
     index='http://bang-dream.com/',
     tag='bos',
+    desc='BanG Dream 企划官方网站',
     tableName='BandoriOfficialSite'
 )
 

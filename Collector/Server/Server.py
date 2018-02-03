@@ -8,9 +8,11 @@
 @Desc: 
 '''
 from flask import Flask
+from flask_cors import CORS
 from Collector.Server.Public.Public import Public
 
 APP = Flask(__name__)
+CORS(APP)
 
 APP.register_blueprint(Public, url_prefix='/public')
 
